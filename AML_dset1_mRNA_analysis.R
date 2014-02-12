@@ -66,6 +66,10 @@ combinedControlPlot(beadlevel_data)
 BSData <- summarize(beadlevel_data)
 det = calculateDetection(BSData)
 
+#add annotation
+BSData <- addFeatureData(BSData, toAdd = c("SYMBOL", "PROBEQUALITY", "CODINGZONE", "PROBESEQUENCE","GENOMICLOCATION"))
+
+
 png("dset1_mRNA_probe_detection_pvals.png", width=9,height=7, units="in", res=150)
 boxplot(det, main='dset1_mRNA_probe_detection_pvals (Null: there is no expression) ', ylab='p-value(detection score)',xaxt='n', xlab='individual samples/array' )
 dev.off()
@@ -76,31 +80,37 @@ dev.off()
 synapseLogin()
 syn_mRNA_files <- synapseQuery('SELECT id, name FROM entity WHERE parentId=="syn2329717"')
 
-
-?Activity
-
 ## LINK THESE TOGETHER WITH PROVENANCE
-act  <- Activity(used=syn_mRNA_files$entity.id, executed=c(''))
+act  <- Activity(used=syn_mRNA_files$entity.id, executed=c('https://github.com/apratap/AML/blob/master/AML_dset1_mRNA_analysis.R'))
+act <- synStore(act)
+mRNA_arrayQC1 <- File("dset1_mRNA_array_intensities.png",synapseStore=T,parentId ="syn2329716")
+mRNA_arrayQC1 <- synStore(mRNA_arrayQC1, activity=act)
 
-act  <- storeEntity(act)
-generatedBy(plotFile)  <- act
-plotFile  <- synStore(plotFile)
+mRNA_arrayQC2 <- File("dset1_mRNA_probe_detection_pvals.png",synapseStore=T,parentId ="syn2329716")
+mRNA_arrayQC2 <- synStore(mRNA_arrayQC2, activity=act)
 
+mRNA_arrayQC3 <- File("dset1_mRNA_array_singal_to_noise_ratio.png",synapseStore=T,parentId ="syn2329716")
+mRNA_arrayQC3 <- synStore(mRNA_arrayQC3, activity=act)
 
 
 #log transformed expression vals
 expVals <- exprs(BSData)
-head(expVals)
+newColNames <- lapply(colnames(expVals), function(x){strsplit(x, '_')[[1]][1]})
+colnames(expVals) <- newColNames       
+raw_expVals_probeLevel_file = "/work/DAT_118__AML//Analysis//dset1/mRNA/raw_expVals_probeLevel.txt"
+write.table(expVals,raw_expVals_probeLevel_file, row.names=T, col.names=T, quote=F)
+
+#push the raw expression values to synapse
+syn_raw_expVals_file = synStore(File(raw_expVals_probeLevel_file,parentId = 'syn2329716'), activity=act)
 
 #standard error of measurement
 se.expVals <- se.exprs(BSData)
 head(se.expVals)
 
-head(fData(BSData))
-head(fData(BSData, what="Status"))
-?fData
+fData(BSData)
 head(pData(BSData))
 
 randIDs <- sample(featureNames(BSData),2000)
 heatmap(expVals[randIDs,])
 
+?addFeatureData
