@@ -33,6 +33,9 @@ cleanedRawData <- standardRemoveRows(cleanedRawData)
 #Summarizing Intensities
 summedData <- summarizeIntensitiesAsMedian(cleanedRawData, minSumlength=0, madAdjust=0)
 miRNA_exp_matrix <- exprs(summedData)
+miRNA_exp_matrix_file <- "/work/DAT_118__AML/Analysis//dset1//microRNA/dset1_miRNA_rawExp.txt"
+write.table(miRNA_exp_matrix, miRNA_exp_matrix_file, row.names=T, quote=F, col.names=T)
+
 
 
 #map back the col names to patientIDs
@@ -46,7 +49,7 @@ patientIds <- unlist(lapply(colnames(m), function(x){ patientID <- query_df[quer
 colnames(miRNA_exp_matrix) <- patientIds
 
 #log2 intensity boxplot
-boxplotData(miRNA_exp_matrix, "dset1_miRNA_expression", "raw_intesity")
+boxplotData(miRNA_exp_matrix, "dset1_miRNA_expression", "raw_intensities(log2)")
 
 
 #this gives the mapping to probeID(sequence) to NAME
@@ -58,7 +61,13 @@ head(pData(featureData(summedData)))
 syn_miRNA_files <- synapseQuery('SELECT id, name FROM entity WHERE parentId=="syn2330288"')
 
 ## LINK THESE TOGETHER WITH PROVENANCE
-act  <- Activity(used=syn_mRNA_files$entity.id, executed=c('https://github.com/apratap/AML/blob/master/AML_dset1_mRNA_analysis.R'))
+act  <- Activity(used=syn_miRNA_files$entity.id, executed=c('https://github.com/apratap/AML/blob/master/AML_dset1_microRNA_analysis.R'))
 act <- synStore(act)
-mRNA_arrayQC1 <- File("dset1_mRNA_array_intensities.png",synapseStore=T,parentId ="syn2329716")
-mRNA_arrayQC1 <- synStore(mRNA_arrayQC1, activity=act)
+
+#push the boxplot of miRNA intensities to synapse along with provenance
+miRNA_arrayQC1 <- File("dset1_miRNA_expression_raw_intensities(log2).jpg",synapseStore=T,parentId ="syn2327820")
+miRNA_arrayQC1 <- synStore(miRNA_arrayQC1, activity=act)
+
+#push the miRNA raw exp vals to synapse
+miRNA_expVals <- File(miRNA_exp_matrix_file, synapseStore=T, parentId = "syn2327820")
+miRNA_expVals <- synStore(miRNA_expVals, activity=act)
